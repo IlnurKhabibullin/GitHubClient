@@ -33,7 +33,7 @@ public class ReposFragment extends Fragment {
 
         ArrayAdapter<RepositoryContent.Repository> adapter =
                 new ArrayAdapter<RepositoryContent.Repository>(getActivity().getApplicationContext(),
-                        R.layout.repo_item, R.id.repo_name, RepositoryContent.ITEMS) {
+                        R.layout.repo_item, R.id.repo_name, RepositoryContent.REPOS) {
 
                     @Override
                     public View getView(int position, View convertView, ViewGroup parent) {
@@ -56,9 +56,7 @@ public class ReposFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (null != mListener) {
-                    // Notify the active callbacks interface (the activity, if the
-                    // fragment is attached to one) that an item has been selected.
-                    mListener.onFragmentInteraction(RepositoryContent.ITEMS.get(position).id);
+                    mListener.onFragmentInteraction(RepositoryContent.REPOS.get(position));
                 }
             }
         });
@@ -85,7 +83,7 @@ public class ReposFragment extends Fragment {
 
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
-        void onFragmentInteraction(String id);
+        void onFragmentInteraction(RepositoryContent.Repository repo);
     }
 
 }

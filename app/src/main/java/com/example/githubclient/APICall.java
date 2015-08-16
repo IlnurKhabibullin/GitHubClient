@@ -1,13 +1,9 @@
 package com.example.githubclient;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.widget.Toast;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -21,9 +17,11 @@ import java.net.URL;
  */
 public class APICall extends AsyncTask<String, String, JSONArray> {
     private MainActivity activity;
+    String TAG;
 
-    public APICall(MainActivity activity) {
+    public APICall(MainActivity activity, String tag) {
         this.activity = activity;
+        TAG = tag;
     }
 
     @Override
@@ -46,44 +44,21 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
                 responseStrBuilder.append(inputStr);
             in.close();
             JSONArray result = new JSONArray(responseStrBuilder.toString());
-            for (int i = 0; i < result.length(); i++) {
-                try {
-                    JSONObject repo = result.getJSONObject(i);
-                    Bitmap avatar = null;
-                    try {
-                        in = new java.net.URL(repo.getJSONObject("owner")
-                                .getString("avatar_url")).openStream();
-                        avatar = BitmapFactory.decodeStream(in);
-                        in.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    RepositoryContent.addItem(new RepositoryContent.Repository(
-                            repo.getString("id"),
-                            repo.getString("name"),
-                            repo.getString("description"),
-                            repo.getJSONObject("owner").getString("login"),
-                            avatar,
-                            repo.getInt("stargazers_count"),
-                            repo.getInt("forks_count")
-                    ));
-                } catch (JSONException e) {
-                    System.out.println("repos filling issues: " + e.getMessage());
-                }
-            }
             return result;
-
         } catch (Exception e ) {
-            Toast.makeText(activity,
-                    "Attempt failed",
-                    Toast.LENGTH_SHORT).show();
+//            Toast.makeText(activity,
+//                    "Attempt failed",
+//                    Toast.LENGTH_SHORT).show();
         }
         return null;
     }
 
     @Override
     protected void onPostExecute(JSONArray result) {
-
-        activity.callReposFragment();
+        if ("REPO".equals(TAG))
+            activity.callReposFragment(result);
+        else if ("COMMIT".equals(TAG)) {
+            activity.callCommitsFragment(result);
+        }
     }
 }
