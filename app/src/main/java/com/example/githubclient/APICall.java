@@ -1,5 +1,6 @@
 package com.example.githubclient;
 
+import android.app.ProgressDialog;
 import android.os.AsyncTask;
 
 import org.json.JSONArray;
@@ -16,11 +17,21 @@ import java.net.URL;
  */
 public class APICall extends AsyncTask<String, String, JSONArray> {
     private MainActivity activity;
-    String TAG;
+    String tag;
+    String responseTag;
+    public ProgressDialog dialog;
 
     public APICall(MainActivity activity, String tag) {
         this.activity = activity;
-        TAG = tag;
+        this.tag = tag;
+    }
+
+    protected void onPreExecute() {
+        dialog = new ProgressDialog(activity);
+        dialog.setMessage("Requesting data");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(true);
+        dialog.show();
     }
 
     @Override
@@ -28,6 +39,7 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
         InputStream in;
 
         try {
+            responseTag = "wrong_request";
             URL url = new URL(params[0]);
 
             HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
@@ -39,24 +51,24 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
             StringBuilder responseStrBuilder = new StringBuilder();
 
             String inputStr;
-            while ((inputStr = streamReader.readLine()) != null)
+            while ((inputStr = streamReader.readLine()) != null) {
                 responseStrBuilder.append(inputStr);
+            }
             in.close();
             JSONArray result = new JSONArray(responseStrBuilder.toString());
+            responseTag = "correct_request";
             return result;
         } catch (Exception e ) {
-//            Toast.makeText(activity,
-//                    "Attempt failed",
-//                    Toast.LENGTH_SHORT).show();
         }
         return null;
     }
 
     @Override
     protected void onPostExecute(JSONArray result) {
-        if ("REPO".equals(TAG))
-            activity.callReposFragment(result);
-        else if ("COMMIT".equals(TAG)) {
+        dialog.dismiss();
+        if ("REPO".equals(tag))
+            activity.callReposFragment(result, responseTag);
+        else if ("COMMIT".equals(tag)) {
             activity.callCommitsFragment(result);
         }
     }

@@ -3,6 +3,8 @@ package com.example.githubclient;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,8 +13,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 public class CommitsFragment extends Fragment {
-//    private RepositoryContent.Repository repository;
-    private ListView commitsList;
 
     public static CommitsFragment newInstance() {
         return new CommitsFragment();
@@ -22,9 +22,14 @@ public class CommitsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_commits, container, false);
-//        ((TextView)v.findViewById(R.id.repo_owner)).setText(repository.owner);
-//        ((TextView)v.findViewById(R.id.repository)).setText(repository.name);
-        ArrayAdapter<RepositoryContent.Commit> adapter =
+
+        RecyclerView rv = (RecyclerView)v.findViewById(R.id.rv);
+        rv.setHasFixedSize(true);
+        LinearLayoutManager llm = new LinearLayoutManager(getActivity().getApplicationContext());
+        rv.setLayoutManager(llm);
+        rv.setAdapter(new CommitViewAdapter(RepositoryContent.COMMITS));
+
+        /*ArrayAdapter<RepositoryContent.Commit> adapter =
                 new ArrayAdapter<RepositoryContent.Commit>(getActivity().getApplicationContext(),
                         R.layout.commit_item, R.id.commit_desc, RepositoryContent.COMMITS) {
 
@@ -42,13 +47,8 @@ public class CommitsFragment extends Fragment {
                     }
                 };
         commitsList = (ListView)v.findViewById(R.id.commits_list);
-        commitsList.setAdapter(adapter);
+        commitsList.setAdapter(adapter);*/
 
         return v;
     }
-
-//    private CommitsFragment setRepo(RepositoryContent.Repository repo) {
-//        repository = repo;
-//        return this;
-//    }
 }

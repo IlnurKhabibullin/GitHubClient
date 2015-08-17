@@ -1,7 +1,10 @@
 package com.example.githubclient;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
@@ -33,7 +36,6 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        initToolbar();
         toolbar = (Toolbar)findViewById(R.id.toolbar);
         toolbar.setTitleTextAppearance(this, R.style.Base_TextAppearance_AppCompat_Large);
         setSupportActionBar(toolbar);
@@ -41,7 +43,7 @@ public class MainActivity extends AppCompatActivity
         credentials = sPref.getString(CREDS, "");
         if (!"".equals(credentials)) {
             if (RepositoryContent.REPOS.isEmpty())
-                onButtonPressed(credentials);
+                onSignIn(credentials);
             else
                 toolbar.setTitle("Repositories");
                 getSupportFragmentManager().beginTransaction()
@@ -59,60 +61,95 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onDestroy() {
-//        sPref.edit().putString(CREDS, credentials).commit();
         super.onDestroy();
     }
 
-    public void onButtonPressed(String cred) {
+    public void onSignIn(String cred) {
         credentials = cred;
         sPref.edit().putString(CREDS, credentials).commit();
-        APICall apiCall = new APICall(this, "REPO");
-        apiCall.execute("https://api.github.com/user/repos");
+        Context context = this.getApplicationContext();
+        final ConnectivityManager connectivityManager = ((ConnectivityManager) context.
+                getSystemService(context.CONNECTIVITY_SERVICE));
+        if (connectivityManager.getActiveNetworkInfo() != null &&
+                connectivityManager.getActiveNetworkInfo().isConnected()) {
+            APICall apiCall = new APICall(this, "REPO");
+            apiCall.execute("https://api.github.com/user/repos");
+        } else {
+            Toast.makeText(this,
+                    "Check your internet connection",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
-    public void callReposFragment(JSONArray result) {
-        for (int i = 0; i < result.length(); i++) {
-            try {
-                JSONObject repo = result.getJSONObject(i);
-                String name = repo.getJSONObject("owner").getString("login");
-                String commit_url = repo.getString("commits_url");
-                if (!RepositoryContent.AVATAR_MAP.containsKey(name)) {
-                    dit = new DownloadImageTask();
-                    dit.executeAsyncTask(dit, repo.getJSONObject("owner")
-                            .getString("avatar_url"));
-                    try {
-                        RepositoryContent.addAVATAR(name, dit.get());
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
-                    }
-                }
-                Bitmap avatar = RepositoryContent.AVATAR_MAP.get(name);
-                RepositoryContent.addRepo(new RepositoryContent.Repository(
-                        repo.getString("id"),
-                        repo.getString("name"),
-                        repo.getString("description"),
-                        name,
-                        commit_url.substring(0, commit_url.length() - 6),
-                        avatar,
-                        repo.getInt("stargazers_count"),
-                        repo.getInt("forks_count")
-                ));
-            } catch (JSONException e) {
-                System.out.println("repos filling issues: " + e.getMessage());
-            }
+    public void callReposFragment(JSONArray result, String responseTag) {
+        if ("wrong_request".equals(responseTag)) {
+            Toast.makeText(this,
+                    "Wrong login or password",
+                    Toast.LENGTH_LONG).show();
+            return;
         }
-        toolbar.setTitle("Repositories");
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragmentContainer, ReposFragment.newInstance()
-                        , "REPOS_FRAGMENT")
-                .commit();
+        if (result != null) {
+            for (int i = 0; i < result.length(); i++) {
+                try {
+                    JSONObject repo = result.getJSONObject(i);
+                    String owner = repo.getJSONObject("owner").getString("login");
+                    String commit_url = repo.getString("commits_url");
+                    if (!RepositoryContent.AVATAR_MAP.containsKey(owner)) {
+                        dit = new DownloadImageTask();
+                        dit.executeAsyncTask(dit, repo.getJSONObject("owner")
+                                .getString("avatar_url"));
+                        try {
+                            RepositoryContent.addAVATAR(owner, dit.get());
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    Bitmap avatar = RepositoryContent.AVATAR_MAP.get(owner);
+                    int iconId = repo.getBoolean("private")?R.drawable.ic_lock_outline_white_18dp:
+                            R.drawable.ic_lock_open_white_18dp;
+                    Drawable privacy_icon = getDrawable(iconId);
+                    RepositoryContent.addRepo(new RepositoryContent.Repository(
+                            repo.getString("id"),
+                            repo.getString("name"),
+                            repo.getString("description"),
+                            owner,
+                            privacy_icon,
+                            commit_url.substring(0, commit_url.length() - 6),
+                            avatar,
+                            repo.getInt("stargazers_count"),
+                            repo.getInt("forks_count")
+                    ));
+                } catch (JSONException e) {
+                    System.out.println("repos filling issues: " + e.getMessage());
+                }
+            }
+            toolbar.setTitle("Repositories");
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragmentContainer, ReposFragment.newInstance()
+                            , "REPOS_FRAGMENT")
+                    .commit();
+        } else {
+            Toast.makeText(this,
+                    "There is no repositories yet",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     public void onFragmentInteraction(RepositoryContent.Repository repo) {
-        APICall apiCall = new APICall(this, "COMMIT");
-        apiCall.execute(repo.commits_url);
+        Context context = this.getApplicationContext();
+        final ConnectivityManager connectivityManager = ((ConnectivityManager) context.
+                getSystemService(context.CONNECTIVITY_SERVICE));
+        if (connectivityManager.getActiveNetworkInfo() != null &&
+                connectivityManager.getActiveNetworkInfo().isConnected()) {
+            APICall apiCall = new APICall(this, "COMMIT");
+            apiCall.execute(repo.commits_url);
+        } else {
+            Toast.makeText(this,
+                    "Check your internet connection",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     public void callCommitsFragment(JSONArray commits) {
@@ -148,46 +185,19 @@ public class MainActivity extends AppCompatActivity
         } else {
             Toast.makeText(this,
                     "There is no commits yet",
-                    Toast.LENGTH_SHORT).show();
+                    Toast.LENGTH_LONG).show();
         }
-    }
-
-    private void initToolbar() {
-        toolbar = (Toolbar)findViewById(R.id.toolbar);
-        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                if (menuItem.getItemId() == R.id.logout_button) {
-                    credentials = "";
-                    sPref.edit().putString(CREDS, credentials).commit();
-                    toolbar.setTitle("Authorization");
-                    getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.fragmentContainer, AuthFragment.newInstance()
-                                    , "AUTH_FRAGMENT")
-                            .commit();
-                    return true;
-                }
-                return false;
-            }
-        });
-        toolbar.inflateMenu(R.menu.menu_main);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
         } else if (id == R.id.logout_button) {

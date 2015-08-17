@@ -22,7 +22,7 @@ public class AuthFragment extends Fragment {
     }
 
     public interface OnAuthButtonListener {
-            void onButtonPressed(String credentials);
+            void onSignIn(String credentials);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class AuthFragment extends Fragment {
                     credentials = Base64.encodeToString(credentials.getBytes(), Base64.NO_WRAP);
                     RepositoryContent.REPOS.clear();
                     RepositoryContent.AVATAR_MAP.clear();
-                    mCallBack.onButtonPressed(credentials);
+                    mCallBack.onSignIn(credentials);
                 } else {
                     Toast.makeText(getActivity(),
                             "login or password can not be empty",
