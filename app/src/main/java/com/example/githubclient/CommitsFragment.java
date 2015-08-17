@@ -33,10 +33,10 @@ public class CommitsFragment extends Fragment {
                         View view = super.getView(position, convertView, parent);
 
                         RepositoryContent.Commit commit = getItem(position);
-                        ((TextView)view.findViewById(R.id.commit_author)).setText("by: " + commit.author);
+                        ((TextView)view.findViewById(R.id.commit_author)).setText(commit.author);
                         ((TextView)view.findViewById(R.id.commit_desc)).setText(commit.desc);
                         ((TextView)view.findViewById(R.id.commit_date)).setText(commit.date);
-                        ((TextView)view.findViewById(R.id.commit_hash)).setText(commit.hash);
+                        ((TextView)view.findViewById(R.id.commit_hash)).setText("Hash: " + commit.hash);
 
                         return view;
                     }

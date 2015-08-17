@@ -1,11 +1,13 @@
 package com.example.githubclient;
 
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Base64;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.support.v7.widget.Toolbar;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -14,51 +16,56 @@ import org.json.JSONObject;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 
 
-public class MainActivity extends ActionBarActivity
+public class MainActivity extends AppCompatActivity
         implements AuthFragment.OnAuthButtonListener, ReposFragment.OnFragmentInteractionListener {
     String credentials;
     DownloadImageTask dit;
+    Toolbar toolbar;
+    SharedPreferences sPref;
+
+    private final String CREDS = "credentials";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.fragmentContainer, AuthFragment.newInstance()
-                        , "AUTH_FRAGMENT")
-                .commit();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+//        initToolbar();
+        toolbar = (Toolbar)findViewById(R.id.toolbar);
+        toolbar.setTitleTextAppearance(this, R.style.Base_TextAppearance_AppCompat_Large);
+        setSupportActionBar(toolbar);
+        sPref = getPreferences(MODE_PRIVATE);
+        credentials = sPref.getString(CREDS, "");
+        if (!"".equals(credentials)) {
+            if (RepositoryContent.REPOS.isEmpty())
+                onButtonPressed(credentials);
+            else
+                toolbar.setTitle("Repositories");
+                getSupportFragmentManager().beginTransaction()
+                        .add(R.id.fragmentContainer, ReposFragment.newInstance()
+                                , "REPOS_FRAGMENT")
+                        .commit();
+        } else {
+            toolbar.setTitle("Authorization");
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.fragmentContainer, AuthFragment.newInstance()
+                            , "AUTH_FRAGMENT")
+                    .commit();
         }
+    }
 
-        return super.onOptionsItemSelected(item);
+    @Override
+    public void onDestroy() {
+//        sPref.edit().putString(CREDS, credentials).commit();
+        super.onDestroy();
     }
 
     public void onButtonPressed(String cred) {
         credentials = cred;
-//        credentials = Base64.encodeToString(cred.getBytes(), Base64.NO_WRAP);
+        sPref.edit().putString(CREDS, credentials).commit();
         APICall apiCall = new APICall(this, "REPO");
         apiCall.execute("https://api.github.com/user/repos");
     }
@@ -96,6 +103,7 @@ public class MainActivity extends ActionBarActivity
                 System.out.println("repos filling issues: " + e.getMessage());
             }
         }
+        toolbar.setTitle("Repositories");
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.fragmentContainer, ReposFragment.newInstance()
                         , "REPOS_FRAGMENT")
@@ -109,32 +117,91 @@ public class MainActivity extends ActionBarActivity
 
     public void callCommitsFragment(JSONArray commits) {
         RepositoryContent.COMMITS.clear();
-        for (int i = 0; i < commits.length(); i++) {
-            try {
-                JSONObject commit = commits.getJSONObject(i);
-                String date = "on ";
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                sdf.setTimeZone(TimeZone.getTimeZone("US/Pacific"));
+        if (commits != null) {
+            for (int i = 0; i < commits.length(); i++) {
                 try {
-                    date += DateFormat.getDateTimeInstance().format(sdf.parse(commit.
-                            getJSONObject("commit").getJSONObject("author").getString("date")));
-                } catch (ParseException e) {
-                    e.printStackTrace();
+                    JSONObject commit = commits.getJSONObject(i);
+                    String date = null;
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                    sdf.setTimeZone(TimeZone.getTimeZone("US/Pacific"));
+                    try {
+                        date = DateFormat.getDateTimeInstance().format(sdf.parse(commit.
+                                getJSONObject("commit").getJSONObject("author").getString("date")));
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    RepositoryContent.addCommit(new RepositoryContent.Commit(
+                            commit.getString("sha"),
+                            commit.getJSONObject("commit").getString("message"),
+                            commit.getJSONObject("author").getString("login"),
+                            date
+                    ));
+                } catch (JSONException e) {
+                    System.out.println("commits filling issues: " + e.getMessage());
                 }
-                RepositoryContent.addCommit(new RepositoryContent.Commit(
-                        commit.getString("sha"),
-                        commit.getJSONObject("commit").getString("message"),
-                        commit.getJSONObject("author").getString("login"),
-                        date
-                ));
-            } catch (JSONException e) {
-                System.out.println("commits filling issues: " + e.getMessage());
             }
+            toolbar.setTitle("Commits");
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragmentContainer, CommitsFragment.newInstance()
+                            , "COMMITS_FRAGMENT")
+                    .addToBackStack(null).commit();
+        } else {
+            Toast.makeText(this,
+                    "There is no commits yet",
+                    Toast.LENGTH_SHORT).show();
         }
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragmentContainer, CommitsFragment.newInstance()
-                        , "COMMITS_FRAGMENT")
-                .addToBackStack(null).commit();
+    }
+
+    private void initToolbar() {
+        toolbar = (Toolbar)findViewById(R.id.toolbar);
+        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem menuItem) {
+                if (menuItem.getItemId() == R.id.logout_button) {
+                    credentials = "";
+                    sPref.edit().putString(CREDS, credentials).commit();
+                    toolbar.setTitle("Authorization");
+                    getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.fragmentContainer, AuthFragment.newInstance()
+                                    , "AUTH_FRAGMENT")
+                            .commit();
+                    return true;
+                }
+                return false;
+            }
+        });
+        toolbar.inflateMenu(R.menu.menu_main);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        } else if (id == R.id.logout_button) {
+            credentials = "";
+            sPref.edit().putString(CREDS, credentials).commit();
+            toolbar.setTitle("Authorization");
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragmentContainer, AuthFragment.newInstance()
+                            , "AUTH_FRAGMENT")
+                    .commit();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     public String getCredentials() {

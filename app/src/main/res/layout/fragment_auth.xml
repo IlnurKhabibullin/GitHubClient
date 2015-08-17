@@ -9,11 +9,15 @@
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:hint="login"
+        android:padding="8dp"
         android:id="@+id/loginField" />
 
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:padding="8dp"
+        android:hint="password"
         android:inputType="textPassword"
         android:ems="10"
         android:id="@+id/passwordField" />
@@ -21,6 +25,8 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="New Button"
+        android:text="@string/login_button"
+        android:padding="8dp"
+        android:textSize="14sp"
         android:id="@+id/authButton" />
 </LinearLayout>

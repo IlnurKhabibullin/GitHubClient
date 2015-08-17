@@ -40,9 +40,9 @@ public class AuthFragment extends Fragment {
                 String pass = mPasswordField.getText().toString();
                 if (!login.isEmpty() && !pass.isEmpty()) {
                     String credentials = login + ":" + pass;
-
                     credentials = Base64.encodeToString(credentials.getBytes(), Base64.NO_WRAP);
-//                todo call reposFragment using mCallback
+                    RepositoryContent.REPOS.clear();
+                    RepositoryContent.AVATAR_MAP.clear();
                     mCallBack.onButtonPressed(credentials);
                 } else {
                     Toast.makeText(getActivity(),

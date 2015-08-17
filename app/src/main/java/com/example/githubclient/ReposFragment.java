@@ -40,7 +40,7 @@ public class ReposFragment extends Fragment {
                         View view = super.getView(position, convertView, parent);
 
                         RepositoryContent.Repository repo = getItem(position);
-                        ((TextView)view.findViewById(R.id.author_name)).setText("by: " + repo.owner);
+                        ((TextView)view.findViewById(R.id.author_name)).setText(repo.owner);
                         ((ImageView)view.findViewById(R.id.avatar)).setImageBitmap(repo.avatar);
                         ((TextView)view.findViewById(R.id.repo_name)).setText(repo.name);
                         ((TextView)view.findViewById(R.id.repo_desc)).setText(repo.description);
@@ -56,6 +56,8 @@ public class ReposFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (null != mListener) {
+                    System.out.println("button clicked");
+                    RepositoryContent.COMMITS.clear();
                     mListener.onFragmentInteraction(RepositoryContent.REPOS.get(position));
                 }
             }

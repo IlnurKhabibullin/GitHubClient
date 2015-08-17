@@ -1,7 +1,6 @@
 package com.example.githubclient;
 
 import android.os.AsyncTask;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 
