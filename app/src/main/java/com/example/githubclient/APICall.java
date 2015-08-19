@@ -20,6 +20,7 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
     String tag;
     String responseTag;
     public ProgressDialog dialog;
+    String repo_name;
 
     public APICall(MainActivity activity, String tag) {
         this.activity = activity;
@@ -39,6 +40,10 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
         InputStream in;
 
         try {
+
+            if ("COMMIT".equals(tag)) {
+                repo_name = params[1];
+            }
             responseTag = "wrong_request";
             URL url = new URL(params[0]);
 
@@ -59,6 +64,7 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
             responseTag = "correct_request";
             return result;
         } catch (Exception e ) {
+            e.printStackTrace();
         }
         return null;
     }
@@ -67,9 +73,9 @@ public class APICall extends AsyncTask<String, String, JSONArray> {
     protected void onPostExecute(JSONArray result) {
         dialog.dismiss();
         if ("REPO".equals(tag))
-            activity.callReposFragment(result, responseTag);
+            activity.handleResponse(result, responseTag);
         else if ("COMMIT".equals(tag)) {
-            activity.callCommitsFragment(result);
+            activity.callCommitsFragment(result, repo_name);
         }
     }
 }

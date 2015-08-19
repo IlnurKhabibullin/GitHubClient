@@ -1,6 +1,5 @@
 package com.example.githubclient;
 
-import android.graphics.drawable.Drawable;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -8,8 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-
-import org.w3c.dom.Text;
 
 import java.util.List;
 
@@ -42,13 +39,13 @@ public class RepoViewAdapter extends RecyclerView.Adapter<RepoViewAdapter.ReposV
     public void onBindViewHolder(ReposViewHolder rVH, int i) {
         RepositoryContent.Repository repo = repos.get(i);
         rVH.author_name.setText(repo.owner);
-        rVH.avatar.setImageBitmap(repo.avatar);
+        rVH.avatar.setImageBitmap(RepositoryContent.AVATAR_MAP.get(repo.owner));
         TextView name = rVH.repo_name;
         name.setText(repo.name);
         name.setCompoundDrawablePadding(4);
         name.setCompoundDrawablesWithIntrinsicBounds(null, null, repo.privacyIcon, null);
         rVH.repo_desc.setText(repo.description);
-        rVH.stars.setText(String.valueOf(repo.watches));
+        rVH.stars.setText(String.valueOf(repo.stargazers));
         rVH.forks.setText(String.valueOf(repo.forks));
     }
 

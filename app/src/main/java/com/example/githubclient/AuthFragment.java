@@ -14,14 +14,13 @@ import android.widget.Toast;
 public class AuthFragment extends Fragment {
     private EditText mLoginField;
     private EditText mPasswordField;
-    private Button mAuthButton;
-    private OnAuthButtonListener mCallBack;
+    private AuthFragmentListener mCallBack;
 
     public static AuthFragment newInstance() {
         return new AuthFragment();
     }
 
-    public interface OnAuthButtonListener {
+    public interface AuthFragmentListener {
             void onSignIn(String credentials);
     }
 
@@ -32,7 +31,7 @@ public class AuthFragment extends Fragment {
 
         mLoginField = (EditText) v.findViewById(R.id.loginField);
         mPasswordField = (EditText) v.findViewById(R.id.passwordField);
-        mAuthButton = (Button) v.findViewById(R.id.authButton);
+        Button mAuthButton = (Button) v.findViewById(R.id.authButton);
         mAuthButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -59,7 +58,7 @@ public class AuthFragment extends Fragment {
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         try {
-            mCallBack = (OnAuthButtonListener) activity;
+            mCallBack = (AuthFragmentListener) activity;
         } catch (ClassCastException e) {
             throw new ClassCastException(activity.toString()
                     + " must implement OnHeadlineSelectedListener");

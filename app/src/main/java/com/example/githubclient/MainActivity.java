@@ -1,15 +1,17 @@
 package com.example.githubclient;
 
+import android.app.FragmentManager;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.support.v7.widget.Toolbar;
+import android.view.View;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -20,17 +22,19 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
-import java.util.concurrent.ExecutionException;
 
 
 public class MainActivity extends AppCompatActivity
-        implements AuthFragment.OnAuthButtonListener, ReposFragment.OnFragmentInteractionListener {
+        implements AuthFragment.AuthFragmentListener, ReposFragment.RepoFragmentListener {
     String credentials;
     DownloadImageTask dit;
     Toolbar toolbar;
     SharedPreferences sPref;
 
     private final String CREDS = "credentials";
+    private final String AUTH_FRAGMENT = "auth_fragment";
+    private final String REPOS_FRAGMENT = "repos_fragment";
+    private final String COMMITS_FRAGMENT = "commits_fragment";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +45,14 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
         sPref = getPreferences(MODE_PRIVATE);
         credentials = sPref.getString(CREDS, "");
+        Fragment f = getSupportFragmentManager()
+                .findFragmentById(R.id.fragmentContainer);
+        if (f instanceof ReposFragment)
+            return;
+        if (f instanceof CommitsFragment) {
+            toolbar.setVisibility(View.GONE);
+            return;
+        }
         if (!"".equals(credentials)) {
             if (RepositoryContent.REPOS.isEmpty())
                 onSignIn(credentials);
@@ -48,13 +60,13 @@ public class MainActivity extends AppCompatActivity
                 toolbar.setTitle("Repositories");
                 getSupportFragmentManager().beginTransaction()
                         .add(R.id.fragmentContainer, ReposFragment.newInstance()
-                                , "REPOS_FRAGMENT")
+                                , REPOS_FRAGMENT)
                         .commit();
         } else {
             toolbar.setTitle("Authorization");
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.fragmentContainer, AuthFragment.newInstance()
-                            , "AUTH_FRAGMENT")
+                            , AUTH_FRAGMENT)
                     .commit();
         }
     }
@@ -69,7 +81,7 @@ public class MainActivity extends AppCompatActivity
         sPref.edit().putString(CREDS, credentials).commit();
         Context context = this.getApplicationContext();
         final ConnectivityManager connectivityManager = ((ConnectivityManager) context.
-                getSystemService(context.CONNECTIVITY_SERVICE));
+                getSystemService(Context.CONNECTIVITY_SERVICE));
         if (connectivityManager.getActiveNetworkInfo() != null &&
                 connectivityManager.getActiveNetworkInfo().isConnected()) {
             APICall apiCall = new APICall(this, "REPO");
@@ -81,7 +93,7 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    public void callReposFragment(JSONArray result, String responseTag) {
+    public void handleResponse(JSONArray result, String responseTag) {
         if ("wrong_request".equals(responseTag)) {
             Toast.makeText(this,
                     "Wrong login or password",
@@ -95,21 +107,13 @@ public class MainActivity extends AppCompatActivity
                     String owner = repo.getJSONObject("owner").getString("login");
                     String commit_url = repo.getString("commits_url");
                     if (!RepositoryContent.AVATAR_MAP.containsKey(owner)) {
-                        dit = new DownloadImageTask();
-                        dit.executeAsyncTask(dit, repo.getJSONObject("owner")
-                                .getString("avatar_url"));
-                        try {
-                            RepositoryContent.addAVATAR(owner, dit.get());
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        } catch (ExecutionException e) {
-                            e.printStackTrace();
-                        }
+                        dit = new DownloadImageTask(this, owner);
+                        DownloadImageTask.executeAsyncTask(dit
+                                , repo.getJSONObject("owner").getString("avatar_url"));
                     }
-                    Bitmap avatar = RepositoryContent.AVATAR_MAP.get(owner);
                     int iconId = repo.getBoolean("private")?R.drawable.ic_lock_outline_white_18dp:
                             R.drawable.ic_lock_open_white_18dp;
-                    Drawable privacy_icon = getDrawable(iconId);
+                    Drawable privacy_icon = getResources().getDrawable(iconId);
                     RepositoryContent.addRepo(new RepositoryContent.Repository(
                             repo.getString("id"),
                             repo.getString("name"),
@@ -117,7 +121,6 @@ public class MainActivity extends AppCompatActivity
                             owner,
                             privacy_icon,
                             commit_url.substring(0, commit_url.length() - 6),
-                            avatar,
                             repo.getInt("stargazers_count"),
                             repo.getInt("forks_count")
                     ));
@@ -126,10 +129,6 @@ public class MainActivity extends AppCompatActivity
                 }
             }
             toolbar.setTitle("Repositories");
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragmentContainer, ReposFragment.newInstance()
-                            , "REPOS_FRAGMENT")
-                    .commit();
         } else {
             Toast.makeText(this,
                     "There is no repositories yet",
@@ -137,14 +136,21 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    public void onFragmentInteraction(RepositoryContent.Repository repo) {
+    public void callReposFragment() {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragmentContainer, ReposFragment.newInstance()
+                            , REPOS_FRAGMENT)
+                    .commit();
+    }
+
+    public void onRepoSelected(RepositoryContent.Repository repo) {
         Context context = this.getApplicationContext();
         final ConnectivityManager connectivityManager = ((ConnectivityManager) context.
-                getSystemService(context.CONNECTIVITY_SERVICE));
+                getSystemService(Context.CONNECTIVITY_SERVICE));
         if (connectivityManager.getActiveNetworkInfo() != null &&
                 connectivityManager.getActiveNetworkInfo().isConnected()) {
             APICall apiCall = new APICall(this, "COMMIT");
-            apiCall.execute(repo.commits_url);
+            apiCall.execute(repo.commits_url, repo.name);
         } else {
             Toast.makeText(this,
                     "Check your internet connection",
@@ -152,7 +158,7 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    public void callCommitsFragment(JSONArray commits) {
+    public void callCommitsFragment(JSONArray commits, String name) {
         RepositoryContent.COMMITS.clear();
         if (commits != null) {
             for (int i = 0; i < commits.length(); i++) {
@@ -177,10 +183,15 @@ public class MainActivity extends AppCompatActivity
                     System.out.println("commits filling issues: " + e.getMessage());
                 }
             }
-            toolbar.setTitle("Commits");
+            toolbar.setTitle("'" + name + "' repo");
+            toolbar.setVisibility(View.GONE);
+            CommitsFragment cf = CommitsFragment.newInstance();
+            Bundle bundle = new Bundle();
+            bundle.putString("repo_name", name);
+            cf.setArguments(bundle);
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragmentContainer, CommitsFragment.newInstance()
-                            , "COMMITS_FRAGMENT")
+                    .replace(R.id.fragmentContainer, cf
+                            , COMMITS_FRAGMENT)
                     .addToBackStack(null).commit();
         } else {
             Toast.makeText(this,
@@ -204,14 +215,24 @@ public class MainActivity extends AppCompatActivity
             credentials = "";
             sPref.edit().putString(CREDS, credentials).commit();
             toolbar.setTitle("Authorization");
+            getSupportFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragmentContainer, AuthFragment.newInstance()
-                            , "AUTH_FRAGMENT")
+                            , AUTH_FRAGMENT)
                     .commit();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (getSupportFragmentManager().findFragmentByTag(COMMITS_FRAGMENT) != null) {
+            toolbar.setVisibility(View.VISIBLE);
+            toolbar.setTitle("Repositories");
+        }
+        super.onBackPressed();
     }
 
     public String getCredentials() {
